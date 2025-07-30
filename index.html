@@ -4,212 +4,136 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Family Tree</title>
+  <script src="https://unpkg.com/gojs/release/go.js"></script>
   <style>
     body {
-      font-family: 'Helvetica Neue', sans-serif;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
       text-align: center;
-      margin: 20px;
-      background: #f7f7f7;
+      padding: 1rem;
+      background: #f9f9f9;
     }
-
     h1 {
-      margin-bottom: 5px;
+      font-size: 2rem;
     }
-
-    p {
-      margin-top: 0;
-      color: gray;
-    }
-
-    .tree-container {
-      display: flex;
-      justify-content: center;
-      margin-top: 40px;
-      flex-wrap: wrap;
-    }
-
-    .person {
-      border: 2px solid #333;
-      border-radius: 10px;
-      padding: 10px;
-      margin: 10px;
+    #myDiagramDiv {
+      width: 100%;
+      height: 600px;
+      border: 1px solid #ccc;
       background: white;
-      min-width: 120px;
-      position: relative;
+      margin-bottom: 1rem;
     }
-
-    .connector {
-      width: 2px;
-      height: 30px;
-      background: #333;
-      margin: 0 auto;
+    .controls {
+      margin-bottom: 1rem;
     }
-
-    .child-line {
-      width: 60px;
-      height: 2px;
-      background: #333;
-      position: absolute;
-      top: -20px;
-      left: 50%;
-      transform: translateX(-50%);
-    }
-
-    .family-actions {
-      margin-top: 30px;
-    }
-
-    select, button {
-      padding: 10px;
-      margin: 5px;
-      font-family: 'Helvetica Neue', sans-serif;
-    }
-
-    .tree {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .row {
-      display: flex;
-      justify-content: center;
-      margin-top: 20px;
+    button, select {
+      padding: 0.5rem;
+      margin: 0.2rem;
     }
   </style>
 </head>
 <body>
-
   <h1>Family Tree</h1>
-  <p>Note: There's no login. Make sure to save/export your tree before leaving.</p>
+  <p>This is a basic collaborative family tree. You can’t log in, so be sure to download your work after building!</p>
 
-  <div class="family-actions">
-    <input type="text" id="member-name" placeholder="Enter name" />
-    <select id="relation">
+  <div class="controls">
+    <select id="relationType">
       <option value="parent">Add Parent</option>
+      <option value="sibling">Add Sibling</option>
       <option value="partner">Add Partner</option>
       <option value="child">Add Child</option>
     </select>
-    <button onclick="addMember()">Add</button>
-    <button onclick="downloadCSV()">Download CSV</button>
-    <button onclick="resetTree()">Reset</button>
+    <button onclick="addMember()">Add Member</button>
+    <button onclick="exportAsImage()">Download Image</button>
+    <button onclick="exportAsJSON()">Download JSON</button>
+    <button onclick="resetTree()">Reset Tree</button>
   </div>
 
-  <div class="tree" id="family-tree">
-    <!-- Tree will be dynamically created here -->
-  </div>
+  <div id="myDiagramDiv"></div>
 
   <script>
-    let family = {
-      id: 0,
-      name: 'You',
-      parents: [],
-      partner: null,
-      children: []
-    };
+    const $ = go.GraphObject.make;
 
-    function renderTree() {
-      const container = document.getElementById('family-tree');
-      container.innerHTML = '';
+    const diagram = $(go.Diagram, "myDiagramDiv", {
+      "undoManager.isEnabled": true,
+      layout: $(go.TreeLayout, { angle: 90, layerSpacing: 35 })
+    });
 
-      // Parents
-      if (family.parents.length > 0) {
-        const parentRow = document.createElement('div');
-        parentRow.className = 'row';
-        family.parents.forEach(p => {
-          parentRow.appendChild(createPersonNode(p));
-        });
-        container.appendChild(parentRow);
-      }
+    diagram.nodeTemplate =
+      $(go.Node, "Auto",
+        { selectionAdorned: true },
+        $(go.Shape, "RoundedRectangle",
+          { fill: "#ACE3F1", strokeWidth: 0 }),
+        $(go.TextBlock,
+          { margin: 8, editable: true },
+          new go.Binding("text", "name").makeTwoWay())
+      );
 
-      // You + Partner
-      const midRow = document.createElement('div');
-      midRow.className = 'row';
-      midRow.appendChild(createPersonNode(family));
+    diagram.linkTemplate =
+      $(go.Link,
+        { routing: go.Link.Orthogonal, corner: 5 },
+        $(go.Shape),
+        $(go.Shape, { toArrow: "Standard" })
+      );
 
-      if (family.partner) {
-        midRow.appendChild(createPersonNode(family.partner));
-      }
-      container.appendChild(midRow);
-
-      // Children
-      if (family.children.length > 0) {
-        const childRow = document.createElement('div');
-        childRow.className = 'row';
-        family.children.forEach(c => {
-          childRow.appendChild(createPersonNode(c));
-        });
-        container.appendChild(childRow);
-      }
-    }
-
-    function createPersonNode(person) {
-      const div = document.createElement('div');
-      div.className = 'person';
-      div.textContent = person.name;
-      return div;
-    }
+    let nodeId = 1;
+    diagram.model = new go.GraphLinksModel(
+      [{ key: 0, name: "You" }],
+      []
+    );
 
     function addMember() {
-      const name = document.getElementById('member-name').value.trim();
-      const relation = document.getElementById('relation').value;
-
-      if (!name) return alert("Enter a name first!");
-
-      const newMember = {
-        id: Date.now(),
-        name,
-        parents: [],
-        partner: null,
-        children: []
-      };
-
-      switch (relation) {
-        case 'parent':
-          family.parents.push(newMember);
-          break;
-        case 'partner':
-          family.partner = newMember;
-          break;
-        case 'child':
-          family.children.push(newMember);
-          break;
+      const selected = diagram.selection.first();
+      if (!selected) {
+        alert("Please select a person on the tree.");
+        return;
       }
 
-      document.getElementById('member-name').value = '';
-      renderTree();
+      const rel = document.getElementById("relationType").value;
+      const newNode = { key: nodeId++, name: "New Member" };
+      diagram.model.addNodeData(newNode);
+
+      if (rel === "child") {
+        diagram.model.addLinkData({ from: selected.data.key, to: newNode.key });
+      } else if (rel === "parent") {
+        diagram.model.addLinkData({ from: newNode.key, to: selected.data.key });
+      } else if (rel === "sibling") {
+        const parentLink = diagram.model.linkDataArray.find(link => link.to === selected.data.key);
+        if (parentLink) {
+          diagram.model.addLinkData({ from: parentLink.from, to: newNode.key });
+        } else {
+          alert("This member has no parent node to attach the sibling.");
+        }
+      } else if (rel === "partner") {
+        diagram.model.addLinkData({ from: selected.data.key, to: newNode.key });
+      }
     }
 
-    function downloadCSV() {
-      let csv = "Name,Relation\n";
-      csv += `${family.name},You\n`;
-      family.parents.forEach(p => csv += `${p.name},Parent\n`);
-      if (family.partner) csv += `${family.partner.name},Partner\n`;
-      family.children.forEach(c => csv += `${c.name},Child\n`);
+    function exportAsImage() {
+      const img = diagram.makeImage({ scale: 1, background: "white" });
+      const link = document.createElement("a");
+      link.href = img.src;
+      link.download = "family-tree.png";
+      link.click();
+    }
 
-      const blob = new Blob([csv], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "family_tree.csv";
-      a.click();
+    function exportAsJSON() {
+      const json = diagram.model.toJson();
+      const blob = new Blob([json], { type: "application/json" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "family-tree.json";
+      link.click();
     }
 
     function resetTree() {
-      if (confirm("Are you sure you want to reset the tree?")) {
-        family = {
-          id: 0,
-          name: 'You',
-          parents: [],
-          partner: null,
-          children: []
-        };
-        renderTree();
+      if (confirm("Resetting will erase your current tree. Continue?")) {
+        nodeId = 1;
+        diagram.model = new go.GraphLinksModel(
+          [{ key: 0, name: "You" }],
+          []
+        );
       }
     }
-
-    renderTree();
   </script>
-
 </body>
 </html>
