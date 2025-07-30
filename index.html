@@ -1,122 +1,129 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
   <title>Family Tree</title>
   <script src="https://unpkg.com/gojs/release/go.js"></script>
   <style>
-    body {
-      font-family: "Helvetica Neue", sans-serif;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    h1 {
-      margin-top: 20px;
-    }
-    #description {
-      margin: 10px;
-    }
-    #myDiagramDiv {
-      width: 90vw;
-      height: 70vh;
-      border: 1px solid lightgray;
-    }
-    #controls {
-      margin-top: 10px;
-    }
-    button {
-      margin: 0 5px;
-      padding: 8px 12px;
-    }
+    html, body { width: 100%; height: 100%; margin: 0; padding: 0; }
+    #myDiagramDiv { width: 100%; height: 600px; border: 1px solid black; }
+    .btn-group { margin: 10px; }
   </style>
 </head>
 <body>
-  <h1>Family Tree</h1>
-  <p id="description">This tool doesn’t save data online. Please save your tree before exiting.</p>
-  <div id="myDiagramDiv"></div>
-  <div id="controls">
+  <div class="btn-group">
     <button onclick="addParent()">Add Parent</button>
     <button onclick="addPartner()">Add Partner</button>
     <button onclick="addChild()">Add Child</button>
-    <button onclick="resetTree()">Reset Tree</button>
   </div>
+  <div id="myDiagramDiv"></div>
 
   <script>
     const $ = go.GraphObject.make;
 
-    const myDiagram = $(go.Diagram, "myDiagramDiv", {
-      initialContentAlignment: go.Spot.Center,
-      "undoManager.isEnabled": true,
+    const diagram = $(go.Diagram, "myDiagramDiv", {
+      initialAutoScale: go.Diagram.Uniform,
       layout: $(go.LayeredDigraphLayout, {
         direction: 90,
-        layerSpacing: 30
-      })
+        layerSpacing: 40,
+        columnSpacing: 30
+      }),
+      "undoManager.isEnabled": true
     });
 
-    myDiagram.nodeTemplate = $(
-      go.Node,
-      "Auto",
+    diagram.nodeTemplate = $(go.Node, "Auto",
+      { selectionAdorned: true, click: (e, node) => selectNode(node) },
       $(go.Shape, "RoundedRectangle", { fill: "lightblue" }),
       $(go.TextBlock, { margin: 8 }, new go.Binding("text", "name"))
     );
 
-    myDiagram.linkTemplate =
-      $(go.Link,
-        {
-          routing: go.Link.Orthogonal,
-          corner: 5,
-          toShortLength: 4,
-          relinkableFrom: true,
-          relinkableTo: true
-        },
-        $(go.Shape),
-        $(go.Shape, { toArrow: "Standard" })
-      );
+    diagram.linkTemplate = $(go.Link,
+      $(go.Shape, { strokeWidth: 2 }),
+      $(go.Shape, { toArrow: "Standard" }),
+      $(go.TextBlock, new go.Binding("text", "relationship"), {
+        segmentOffset: new go.Point(0, -10),
+        stroke: "black"
+      })
+    );
 
-    let nodeIdCounter = 1;
+    let selectedNodeKey = null;
 
-    function createNode(name) {
-      return { key: nodeIdCounter++, name: name };
+    function selectNode(node) {
+      selectedNodeKey = node.key;
+    }
+
+    function getNextKey() {
+      let k = 1;
+      while (diagram.model.findNodeDataForKey(k) !== null) k++;
+      return k;
     }
 
     function addParent() {
-      const selected = myDiagram.selection.first();
-      if (!selected) return;
-      const parent = createNode("Parent");
-      myDiagram.model.addNodeData(parent);
-      myDiagram.model.addLinkData({ from: parent.key, to: selected.data.key });
+      if (selectedNodeKey === null) return;
+
+      const name = prompt("Enter parent's name:");
+      if (!name) return;
+
+      const newKey = getNextKey();
+      diagram.model.startTransaction("add parent");
+      diagram.model.addNodeData({ key: newKey, name: name });
+      diagram.model.addLinkData({ from: newKey, to: selectedNodeKey, relationship: "parent" });
+      diagram.model.commitTransaction("add parent");
     }
 
     function addPartner() {
-      const selected = myDiagram.selection.first();
-      if (!selected) return;
-      const partner = createNode("Partner");
-      myDiagram.model.addNodeData(partner);
-      // link from selected to partner as bidirectional
-      myDiagram.model.addLinkData({ from: selected.data.key, to: partner.key });
-      myDiagram.model.addLinkData({ from: partner.key, to: selected.data.key });
+      if (selectedNodeKey === null) return;
+
+      const name = prompt("Enter partner's name:");
+      if (!name) return;
+
+      const node = diagram.model.findNodeDataForKey(selectedNodeKey);
+      const newKey = getNextKey();
+
+      diagram.model.startTransaction("add partner");
+      diagram.model.addNodeData({ key: newKey, name: name });
+      diagram.model.addLinkData({ from: selectedNodeKey, to: newKey, relationship: "partner" });
+
+      const existingChildren = diagram.model.linkDataArray.filter(link =>
+        link.from === selectedNodeKey && link.relationship === "child"
+      );
+
+      existingChildren.forEach(link => {
+        diagram.model.addLinkData({ from: newKey, to: link.to, relationship: "child" });
+      });
+
+      diagram.model.commitTransaction("add partner");
     }
 
     function addChild() {
-      const selected = myDiagram.selection.first();
-      if (!selected) return;
-      const child = createNode("Child");
-      myDiagram.model.addNodeData(child);
-      myDiagram.model.addLinkData({ from: selected.data.key, to: child.key });
+      if (selectedNodeKey === null) return;
+
+      const name = prompt("Enter child's name:");
+      if (!name) return;
+
+      const newKey = getNextKey();
+      diagram.model.startTransaction("add child");
+      diagram.model.addNodeData({ key: newKey, name: name });
+      diagram.model.addLinkData({ from: selectedNodeKey, to: newKey, relationship: "child" });
+
+      // Check if selected node has a partner and connect them to the child too
+      const partnerLinks = diagram.model.linkDataArray.filter(link =>
+        link.from === selectedNodeKey && link.relationship === "partner"
+      );
+
+      partnerLinks.forEach(link => {
+        diagram.model.addLinkData({ from: link.to, to: newKey, relationship: "child" });
+      });
+
+      diagram.model.commitTransaction("add child");
     }
 
-    function resetTree() {
-      nodeIdCounter = 1;
-      myDiagram.model = new go.GraphLinksModel([
-        { key: 0, name: "You" }
-      ], []);
-    }
-
-    resetTree();
+    diagram.model = new go.GraphLinksModel(
+      [
+        { key: 1, name: "You" }
+      ],
+      []
+    );
   </script>
 </body>
 </html>
