@@ -6,210 +6,179 @@
   <title>Family Tree</title>
   <style>
     body {
-      font-family: 'Helvetica Neue', sans-serif;
-      text-align: center;
+      font-family: "Helvetica Neue", sans-serif;
       margin: 20px;
-      background: #f7f7f7;
+      text-align: center;
     }
 
     h1 {
-      margin-bottom: 5px;
+      font-size: 2rem;
+      margin-bottom: 10px;
     }
 
-    p {
-      margin-top: 0;
-      color: gray;
-    }
-
-    .tree-container {
+    #tree {
       display: flex;
       justify-content: center;
       margin-top: 40px;
-      flex-wrap: wrap;
-    }
-
-    .person {
-      border: 2px solid #333;
-      border-radius: 10px;
-      padding: 10px;
-      margin: 10px;
-      background: white;
-      min-width: 120px;
-      position: relative;
-    }
-
-    .connector {
-      width: 2px;
-      height: 30px;
-      background: #333;
-      margin: 0 auto;
-    }
-
-    .child-line {
-      width: 60px;
-      height: 2px;
-      background: #333;
-      position: absolute;
-      top: -20px;
-      left: 50%;
-      transform: translateX(-50%);
-    }
-
-    .family-actions {
-      margin-top: 30px;
-    }
-
-    select, button {
-      padding: 10px;
-      margin: 5px;
-      font-family: 'Helvetica Neue', sans-serif;
-    }
-
-    .tree {
-      display: flex;
       flex-direction: column;
       align-items: center;
     }
 
-    .row {
+    .person {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 10px;
+      margin: 10px;
+      display: inline-block;
+      background-color: #f9f9f9;
+      min-width: 100px;
+    }
+
+    .relationship {
+      margin: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .horizontal-line {
+      width: 40px;
+      height: 2px;
+      background-color: #000;
+      margin: 0 5px;
+    }
+
+    .vertical-line {
+      width: 2px;
+      height: 20px;
+      background-color: #000;
+      margin: 0 auto;
+    }
+
+    .tree-row {
       display: flex;
       justify-content: center;
+      align-items: center;
       margin-top: 20px;
+    }
+
+    .download {
+      margin-top: 20px;
+    }
+
+    button {
+      margin: 5px;
     }
   </style>
 </head>
 <body>
-
   <h1>Family Tree</h1>
-  <p>Note: There's no login. Make sure to save/export your tree before leaving.</p>
+  <p>This version does not have user login. Please take a screenshot or download your tree before leaving this page.</p>
 
-  <div class="family-actions">
-    <input type="text" id="member-name" placeholder="Enter name" />
-    <select id="relation">
-      <option value="parent">Add Parent</option>
-      <option value="partner">Add Partner</option>
-      <option value="child">Add Child</option>
-    </select>
-    <button onclick="addMember()">Add</button>
-    <button onclick="downloadCSV()">Download CSV</button>
+  <div id="tree">
+    <div id="root" class="person">You</div>
+    <div id="partnerRow" class="tree-row"></div>
+    <div id="parentRow" class="tree-row"></div>
+    <div id="childRow" class="tree-row"></div>
+  </div>
+
+  <div>
+    <button onclick="addMember('parent')">Add Parent</button>
+    <button onclick="addMember('partner')">Add Partner</button>
+    <button onclick="addMember('child')">Add Child</button>
     <button onclick="resetTree()">Reset</button>
   </div>
 
-  <div class="tree" id="family-tree">
-    <!-- Tree will be dynamically created here -->
+  <div class="download">
+    <button onclick="downloadTree()">Download Tree (Image)</button>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script>
-    let family = {
-      id: 0,
-      name: 'You',
-      parents: [],
-      partner: null,
-      children: []
-    };
+    let parentCount = 0;
+    let partnerCount = 0;
+    let childCount = 0;
 
-    function renderTree() {
-      const container = document.getElementById('family-tree');
-      container.innerHTML = '';
+    function addMember(type) {
+      const tree = document.getElementById("tree");
 
-      // Parents
-      if (family.parents.length > 0) {
-        const parentRow = document.createElement('div');
-        parentRow.className = 'row';
-        family.parents.forEach(p => {
-          parentRow.appendChild(createPersonNode(p));
-        });
-        container.appendChild(parentRow);
+      if (type === "parent") {
+        parentCount++;
+        const parentRow = document.getElementById("parentRow");
+
+        const parentDiv = document.createElement("div");
+        parentDiv.className = "person";
+        parentDiv.innerText = `Parent ${parentCount}`;
+
+        parentRow.appendChild(parentDiv);
+
+      } else if (type === "partner") {
+        if (partnerCount >= 1) {
+          alert("Only one partner allowed in this demo.");
+          return;
+        }
+        partnerCount++;
+        const partnerRow = document.getElementById("partnerRow");
+
+        const root = document.getElementById("root");
+        const partnerDiv = document.createElement("div");
+        partnerDiv.className = "person";
+        partnerDiv.innerText = `Partner`;
+
+        const relationshipDiv = document.createElement("div");
+        relationshipDiv.className = "relationship";
+
+        const left = document.createElement("div");
+        left.appendChild(root.cloneNode(true));
+
+        const line = document.createElement("div");
+        line.className = "horizontal-line";
+
+        relationshipDiv.appendChild(root);
+        relationshipDiv.appendChild(line);
+        relationshipDiv.appendChild(partnerDiv);
+
+        partnerRow.innerHTML = ""; // Clear any existing partner
+        partnerRow.appendChild(relationshipDiv);
+
+      } else if (type === "child") {
+        childCount++;
+        const childRow = document.getElementById("childRow");
+
+        const childDiv = document.createElement("div");
+        childDiv.className = "person";
+        childDiv.innerText = `Child ${childCount}`;
+
+        const connector = document.createElement("div");
+        connector.className = "vertical-line";
+
+        childRow.appendChild(connector);
+        childRow.appendChild(childDiv);
       }
-
-      // You + Partner
-      const midRow = document.createElement('div');
-      midRow.className = 'row';
-      midRow.appendChild(createPersonNode(family));
-
-      if (family.partner) {
-        midRow.appendChild(createPersonNode(family.partner));
-      }
-      container.appendChild(midRow);
-
-      // Children
-      if (family.children.length > 0) {
-        const childRow = document.createElement('div');
-        childRow.className = 'row';
-        family.children.forEach(c => {
-          childRow.appendChild(createPersonNode(c));
-        });
-        container.appendChild(childRow);
-      }
-    }
-
-    function createPersonNode(person) {
-      const div = document.createElement('div');
-      div.className = 'person';
-      div.textContent = person.name;
-      return div;
-    }
-
-    function addMember() {
-      const name = document.getElementById('member-name').value.trim();
-      const relation = document.getElementById('relation').value;
-
-      if (!name) return alert("Enter a name first!");
-
-      const newMember = {
-        id: Date.now(),
-        name,
-        parents: [],
-        partner: null,
-        children: []
-      };
-
-      switch (relation) {
-        case 'parent':
-          family.parents.push(newMember);
-          break;
-        case 'partner':
-          family.partner = newMember;
-          break;
-        case 'child':
-          family.children.push(newMember);
-          break;
-      }
-
-      document.getElementById('member-name').value = '';
-      renderTree();
-    }
-
-    function downloadCSV() {
-      let csv = "Name,Relation\n";
-      csv += `${family.name},You\n`;
-      family.parents.forEach(p => csv += `${p.name},Parent\n`);
-      if (family.partner) csv += `${family.partner.name},Partner\n`;
-      family.children.forEach(c => csv += `${c.name},Child\n`);
-
-      const blob = new Blob([csv], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "family_tree.csv";
-      a.click();
     }
 
     function resetTree() {
-      if (confirm("Are you sure you want to reset the tree?")) {
-        family = {
-          id: 0,
-          name: 'You',
-          parents: [],
-          partner: null,
-          children: []
-        };
-        renderTree();
-      }
+      parentCount = 0;
+      partnerCount = 0;
+      childCount = 0;
+
+      document.getElementById("partnerRow").innerHTML = "";
+      document.getElementById("parentRow").innerHTML = "";
+      document.getElementById("childRow").innerHTML = "";
+
+      const root = document.getElementById("root");
+      root.innerText = "You";
+      document.getElementById("tree").prepend(root);
     }
 
-    renderTree();
+    function downloadTree() {
+      html2canvas(document.querySelector("#tree")).then(canvas => {
+        const link = document.createElement("a");
+        link.download = 'family_tree.png';
+        link.href = canvas.toDataURL();
+        link.click();
+      });
+    }
   </script>
-
 </body>
 </html>
