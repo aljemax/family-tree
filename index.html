@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Simple GOJS Family Tree</title>
+  <title>Family Tree</title>
   <script src="https://unpkg.com/gojs/release/go.js"></script>
   <style>
     #myDiagramDiv {
@@ -15,34 +15,56 @@
 </head>
 <body>
 
-<h2>Family Tree</h2>
-<p>Add family members and visualize their connections.</p>
+<h2>Family Tree Diagram</h2>
 <div id="myDiagramDiv"></div>
 
 <script>
   const $ = go.GraphObject.make;
 
-  const myDiagram = $(go.Diagram, "myDiagramDiv",
-    {
-      "undoManager.isEnabled": true
-    });
+  const myDiagram = $(go.Diagram, "myDiagramDiv", {
+    "undoManager.isEnabled": true,
+    layout: $(go.TreeLayout, {
+      angle: 90,
+      arrangement: go.TreeLayout.ArrangementHorizontal,
+      layerSpacing: 50
+    })
+  });
 
+  // Node template
   myDiagram.nodeTemplate =
     $(go.Node, "Auto",
-      $(go.Shape, "RoundedRectangle", { fill: "lightblue" }),
-      $(go.TextBlock, { margin: 8 },
+      $(go.Shape, "RoundedRectangle", { fill: "lightblue", strokeWidth: 0 }),
+      $(go.TextBlock, { margin: 8, font: "bold 14px Helvetica Neue" },
         new go.Binding("text", "name"))
     );
 
+  // Custom link template
+  myDiagram.linkTemplateMap.add("partner",
+    $(go.Link,
+      { routing: go.Link.Orthogonal, corner: 5 },
+      $(go.Shape, { strokeWidth: 2, stroke: "gray" })
+    )
+  );
+
+  myDiagram.linkTemplateMap.add("parent",
+    $(go.Link,
+      { routing: go.Link.Orthogonal, corner: 5 },
+      $(go.Shape, { strokeWidth: 2, stroke: "black" }),
+      $(go.Shape, { toArrow: "Standard", stroke: "black", fill: "black" })
+    )
+  );
+
+  // Sample data
   myDiagram.model = new go.GraphLinksModel(
     [
-      { key: 1, name: "Grandparent" },
-      { key: 2, name: "Parent", group: 1 },
+      { key: 1, name: "Father" },
+      { key: 2, name: "Mother" },
       { key: 3, name: "Child" }
     ],
     [
-      { from: 1, to: 2 },
-      { from: 2, to: 3 }
+      { from: 1, to: 2, category: "partner" },    // Horizontal link
+      { from: 1, to: 3, category: "parent" },     // Downward link
+      { from: 2, to: 3, category: "parent" }      // Downward link
     ]
   );
 </script>
