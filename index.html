@@ -2,26 +2,37 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Family Tree</title>
+  <title>Interactive Family Tree</title>
   <script src="https://unpkg.com/gojs/release/go.js"></script>
   <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h2 {
+      margin: 20px;
+    }
     #myDiagramDiv {
       width: 100%;
-      height: 600px;
-      background-color: #FAFAFA;
+      height: 90vh;
       border: 1px solid #ccc;
     }
   </style>
 </head>
 <body>
 
-<h2>Family Tree Diagram</h2>
+<h2>🧬 Interactive Family Tree</h2>
 <div id="myDiagramDiv"></div>
 
 <script>
   const $ = go.GraphObject.make;
 
   const myDiagram = $(go.Diagram, "myDiagramDiv", {
+    initialAutoScale: go.Diagram.Uniform,
     "undoManager.isEnabled": true,
     layout: $(go.TreeLayout, {
       angle: 90,
@@ -30,15 +41,17 @@
     })
   });
 
-  // Node template
+  // NODE TEMPLATE
   myDiagram.nodeTemplate =
     $(go.Node, "Auto",
-      $(go.Shape, "RoundedRectangle", { fill: "lightblue", strokeWidth: 0 }),
-      $(go.TextBlock, { margin: 8, font: "bold 14px Helvetica Neue" },
-        new go.Binding("text", "name"))
+      { width: 120, height: 50 },
+      $(go.Shape, "RoundedRectangle", { fill: "#B3D9FF", stroke: "#3399FF", strokeWidth: 2 }),
+      $(go.TextBlock,
+        { margin: 6, font: "bold 14px 'Segoe UI'", wrap: go.TextBlock.WrapFit, editable: true },
+        new go.Binding("text", "name").makeTwoWay())
     );
 
-  // Custom link template
+  // LINK TEMPLATE FOR PARTNER (side-by-side)
   myDiagram.linkTemplateMap.add("partner",
     $(go.Link,
       { routing: go.Link.Orthogonal, corner: 5 },
@@ -46,6 +59,7 @@
     )
   );
 
+  // LINK TEMPLATE FOR PARENT-CHILD (vertical with arrow)
   myDiagram.linkTemplateMap.add("parent",
     $(go.Link,
       { routing: go.Link.Orthogonal, corner: 5 },
@@ -54,17 +68,25 @@
     )
   );
 
-  // Sample data
+  // SAMPLE DATA
   myDiagram.model = new go.GraphLinksModel(
     [
-      { key: 1, name: "Father" },
-      { key: 2, name: "Mother" },
-      { key: 3, name: "Child" }
+      { key: 1, name: "Dad" },
+      { key: 2, name: "Mom" },
+      { key: 3, name: "Child A" },
+      { key: 4, name: "Child B" },
+      { key: 5, name: "Partner of Child A" },
+      { key: 6, name: "Grandchild" }
     ],
     [
-      { from: 1, to: 2, category: "partner" },    // Horizontal link
-      { from: 1, to: 3, category: "parent" },     // Downward link
-      { from: 2, to: 3, category: "parent" }      // Downward link
+      { from: 1, to: 2, category: "partner" },
+      { from: 1, to: 3, category: "parent" },
+      { from: 2, to: 3, category: "parent" },
+      { from: 1, to: 4, category: "parent" },
+      { from: 2, to: 4, category: "parent" },
+      { from: 3, to: 5, category: "partner" },
+      { from: 3, to: 6, category: "parent" },
+      { from: 5, to: 6, category: "parent" }
     ]
   );
 </script>
