@@ -45,14 +45,6 @@
       margin: 0 auto;
     }
 
-    .horizontal-connector {
-      width: 40px;
-      height: 2px;
-      background: #333;
-      align-self: center;
-      margin: 0 5px;
-    }
-
     .child-line {
       width: 60px;
       height: 2px;
@@ -67,7 +59,7 @@
       margin-top: 30px;
     }
 
-    select, button, input {
+    select, button {
       padding: 10px;
       margin: 5px;
       font-family: 'Helvetica Neue', sans-serif;
@@ -82,7 +74,6 @@
     .row {
       display: flex;
       justify-content: center;
-      align-items: center;
       margin-top: 20px;
     }
   </style>
@@ -131,19 +122,14 @@
         container.appendChild(parentRow);
       }
 
-      // You + Partner with horizontal connector
+      // You + Partner
       const midRow = document.createElement('div');
       midRow.className = 'row';
-
       midRow.appendChild(createPersonNode(family));
 
       if (family.partner) {
-        const connector = document.createElement('div');
-        connector.className = 'horizontal-connector';
-        midRow.appendChild(connector);
         midRow.appendChild(createPersonNode(family.partner));
       }
-
       container.appendChild(midRow);
 
       // Children
@@ -183,7 +169,6 @@
           family.parents.push(newMember);
           break;
         case 'partner':
-          if (family.partner) return alert("Partner already exists!");
           family.partner = newMember;
           break;
         case 'child':
